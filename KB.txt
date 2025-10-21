@@ -1,3 +1,24 @@
+# KNOWLEDGE BASE (KB) ANNOTATION
+# ==============================
+# This KB represents the agent's beliefs about the 4x4 Wumpus World.
+# Initial state: only (1,1) is known to be SAFE; all others are UNKNOWN.
+#
+# Inference Rules Implemented:
+# 1. If a cell has NO BREEZE, then all adjacent cells are SAFE from pits.
+# 2. If a cell has NO STENCH, then all adjacent cells are SAFE from Wumpus.
+# 3. If a cell has a BREEZE, then at least one adjacent unvisited cell contains a pit.
+#    → Probability of pit in each candidate = 1 / (number of possible adjacent cells)
+# 4. Similarly for STENCH → Wumpus probability.
+# 5. Similarly for GLOW → Paradise probability.
+# 6. Probabilities are updated only if new evidence increases them.
+# 7. A cell is marked SAFE if it is confirmed pit/Wumpus-free by rule (1) or (2).
+#
+# Representation per cell:
+# - SAFE: known to be free of danger
+# - UNKNOWN: no conclusive evidence
+# - Breeze/Stench/Glow: percept observed when agent visited that cell
+# - p_pit, p_wumpus, p_paradise: estimated probabilities (0.0 to 1.0)
+
 Cell (1,1): SAFE
   Breeze: No
   Stench: No
