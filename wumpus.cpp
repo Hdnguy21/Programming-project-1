@@ -35,9 +35,9 @@ struct World {
 
     // JUST GRABS DATA FROM THE PROVIDED TEXT FILE AND SETS VARIABLES
     // Parses a world definition file with lines like:
-    //   P[2,3]  → pit at (2,3)
-    //   W[3,2]  → Wumpus at (3,2)
-    //   G[4,4]  → glowing paradise at (4,4)
+    //   pit 2 3  → pit at (2,3)
+    //   wumpus 3 2  → Wumpus at (3,2)
+    //   paradise 4 4  → glowing paradise at (4,4)
     // Note: This parser assumes single-digit coordinates and exact formatting.
     void load(const string &filename) {
         ifstream file(filename.c_str());
@@ -50,24 +50,24 @@ struct World {
         pitCount = 0;
         while (getline(file, line)) {
             if (line.empty()) continue;
-            // Ensure line has at least 6 characters: "P[1,1]"
-            if (line.size() < 6) {
+            // Ensure line has at least 7 characters: "pit 1 1"
+            if (line.size() < 7) {
                 cout << "Warning: skipping invalid line: " << line << endl;
                 continue;
             }
     
-            if (line[0] == 'P') {
-                pitX[pitCount] = line[2] - '0';
-                pitY[pitCount] = line[4] - '0';
+            if (line[0] == 'w') {
+                pitX[pitCount] = line[7] - '0';
+                pitY[pitCount] = line[9] - '0';
                 pitCount++;
             }
-            else if (line[0] == 'W') {
-                wumpusX = line[2] - '0';
-                wumpusY = line[4] - '0';
+            else if (line[1] == 'i') {
+                wumpusX = line[4] - '0';
+                wumpusY = line[6] - '0';
             }
-            else if (line[0] == 'G') {
-                paradiseX = line[2] - '0';
-                paradiseY = line[4] - '0';
+            else if (line[1] == 'a') {
+                paradiseX = line[9] - '0';
+                paradiseY = line[11] - '0';
             }
         }
         file.close();
