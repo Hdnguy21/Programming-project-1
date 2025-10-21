@@ -1,0 +1,79 @@
+Cell (1,1): SAFE
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (1,2): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (1,3): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (1,4): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (2,1): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (2,2): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (2,3): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (2,4): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (3,1): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (3,2): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (3,3): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (3,4): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (4,1): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (4,2): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (4,3): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
+
+Cell (4,4): UNKNOWN
+  Breeze: No
+  Stench: No
+    glow: No
