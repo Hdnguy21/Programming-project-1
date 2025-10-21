@@ -49,30 +49,25 @@ struct World {
         string line;
         pitCount = 0;
         while (getline(file, line)) {
-            // Skip empty lines
             if (line.empty()) continue;
+            // Ensure line has at least 6 characters: "P[1,1]"
+            if (line.size() < 6) {
+                cout << "Warning: skipping invalid line: " << line << endl;
+                continue;
+            }
     
             if (line[0] == 'P') {
-                // Parse P[x,y]
-                int x = line[2] - '0';  // after 'P['
-                int y = line[4] - '0';  // after ','
-                pitX[pitCount] = x;
-                pitY[pitCount] = y;
+                pitX[pitCount] = line[2] - '0';
+                pitY[pitCount] = line[4] - '0';
                 pitCount++;
             }
             else if (line[0] == 'W') {
-                // Parse W[x,y]
-                int x = line[2] - '0';
-                int y = line[4] - '0';
-                wumpusX = x;
-                wumpusY = y;
+                wumpusX = line[2] - '0';
+                wumpusY = line[4] - '0';
             }
             else if (line[0] == 'G') {
-                // Parse G[x,y]
-                int x = line[2] - '0';
-                int y = line[4] - '0';
-                paradiseX = x;
-                paradiseY = y;
+                paradiseX = line[2] - '0';
+                paradiseY = line[4] - '0';
             }
         }
         file.close();
