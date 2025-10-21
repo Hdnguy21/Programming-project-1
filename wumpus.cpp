@@ -8,6 +8,12 @@ using namespace std;
 const int SIZE = 4;
 
 //THE INFORMATION THAT WILL BE HELD ABOUT EVERY CELL IN WORLD
+// Each Cell stores the agent's belief state about that location:
+// - safe: known to be free of Wumpus and pits (logically inferred)
+// - unknown: no conclusive evidence; may still be dangerous
+// - breeze/stench/glow: percepts observed when the agent visited this cell
+// - p_pit, p_wumpus, p_paradise: estimated probabilities (0.0 = impossible, 1.0 = certain)
+//   These are updated using probabilistic reasoning based on adjacent percepts.
 struct Cell {
     bool safe;
     bool unknown;
@@ -19,46 +25,70 @@ struct Cell {
     double p_paradise;
 };
 
+// Represents the true Wumpus World environment (hidden from the agent).
+// Contains ground-truth locations of hazards and goal.
 struct World {
     int pitCount;
     int pitX[SIZE * SIZE], pitY[SIZE * SIZE]; // just handles max amount of pits
     int wumpusX, wumpusY;
     int paradiseX, paradiseY;
 
-    
-    //JUST GRABS DATA FROM THE PROVIDED TEXT FILE AND SETS VARIABLES
+    // JUST GRABS DATA FROM THE PROVIDED TEXT FILE AND SETS VARIABLES
+    // Parses a world definition file with lines like:
+    //   P[2,3]  → pit at (2,3)
+    //   W[3,2]  → Wumpus at (3,2)
+    //   G[4,4]  → glowing paradise at (4,4)
+    // Note: This parser assumes single-digit coordinates and exact formatting.
     void load(const string &filename) {
         ifstream file(filename.c_str());
         if (!file.is_open()) {
             cout << "Error: cannot open " << filename << endl;
             exit(1);
         }
-        
+    
         string line;
         pitCount = 0;
         while (getline(file, line)) {
-            if (line[0] == 'w') {
-                wumpusX = line[7] - '0';
-                wumpusY = line[9] - '0';
-            }
-            else if (line[1] == 'i') {
-                pitX[pitCount] = line[4] - '0';
-                pitY[pitCount] = line[6] - '0';
+            // Skip empty lines
+            if (line.empty()) continue;
+    
+            if (line[0] == 'P') {
+                // Parse P[x,y]
+                int x = line[2] - '0';  // after 'P['
+                int y = line[4] - '0';  // after ','
+                pitX[pitCount] = x;
+                pitY[pitCount] = y;
                 pitCount++;
             }
-            else {
-                paradiseX = line[9] - '0';
-                paradiseY = line[11] - '0';
+            else if (line[0] == 'W') {
+                // Parse W[x,y]
+                int x = line[2] - '0';
+                int y = line[4] - '0';
+                wumpusX = x;
+                wumpusY = y;
+            }
+            else if (line[0] == 'G') {
+                // Parse G[x,y]
+                int x = line[2] - '0';
+                int y = line[4] - '0';
+                paradiseX = x;
+                paradiseY = y;
             }
         }
         file.close();
     }
     
+    // Checks if given coordinates are within the 4x4 grid (1-indexed).
     bool inBounds(int x, int y) {
         return x >= 1 && x <= SIZE && y >= 1 && y <= SIZE;
     }
     
     //CHECKS ADJACENT SQUARES TO SEE IF THERE IS A PIT, WUMPUS, OR PARADISE
+    // Simulates the percept generation process of the Wumpus World:
+    // - A breeze is perceived if any adjacent cell contains a pit.
+    // - A stench is perceived if any adjacent cell contains the Wumpus.
+    // - A glow is perceived if any adjacent cell contains the paradise.
+    // This function is used by the World to tell the Agent what it senses at (x,y).
     void percepts(int x, int y, bool &breeze, bool &stench, bool &glow) {
         breeze = false;
         stench = false;
@@ -78,13 +108,16 @@ struct World {
     }
 };
 
+// The knowledge-based agent that explores the world and maintains a belief state.
 struct Agent {
-    World *world;
-    Cell knowledge[SIZE+1][SIZE+1];
-    bool visited[SIZE+1][SIZE+1]; // 1 indexed
-    bool safe[SIZE+1][SIZE+1];
-    int x, y; // current position
-    
+    World *world;  // pointer to the true world (used only for percepts and termination)
+    Cell knowledge[SIZE+1][SIZE+1]; // belief state: what the agent knows about each cell
+    bool visited[SIZE+1][SIZE+1]; // tracks which cells the agent has physically entered
+    bool safe[SIZE+1][SIZE+1]; // auxiliary array: cells confirmed safe by inference
+    int x, y; // current position (starts at (1,1))
+
+    // Initializes the agent's knowledge base and starting state.
+    // At start: only (1,1) is known to be safe and visited; all others are unknown.
     void init(World *w) {
         world = w;
         x = 1; y = 1;
@@ -106,9 +139,12 @@ struct Agent {
         safe[1][1] = true;
     }
     
-    //DETERMINES THE POTENTIAL CHANCE OF A ADJACENT SQUARE BEING A PIT, WUMPUS, OR PARADISE.
-    //IF THE SQUARE IS A BREEZE, STENCH, OR GLOW IT WILL UPDATE SURROUNDING SQUARES CHANCE OF
-    //BEING A PIT, WUMPUS, OR PARADISE BASED ON NUMBER OF UNVISITED AND UNSAFE SQUARES NEAR IT
+    // DETERMINES THE POTENTIAL CHANCE OF AN ADJACENT SQUARE BEING A PIT, WUMPUS, OR PARADISE.
+    // IF THE CURRENT CELL HAS A BREEZE, STENCH, OR GLOW, THIS FUNCTION UPDATES THE PROBABILITIES
+    // OF NEIGHBORING UNKNOWN CELLS BASED ON THE NUMBER OF PLAUSIBLE EXPLANATIONS.
+    // Example: If (2,1) has a breeze and only (2,2) and (3,1) are unvisited neighbors,
+    //          then each gets p_pit = 0.5.
+    // This implements a simple form of probabilistic logical inference
     void updateKnowledge() {
         bool breeze, stench, glow;
         world->percepts(x, y, breeze, stench, glow);
@@ -121,6 +157,7 @@ struct Agent {
         int dx[4] = {1,-1,0,0};
         int dy[4] = {0,0,1,-1};
 
+        // Rule: No breeze and no stench → all adjacent cells are SAFE (no pit, no Wumpus)
         if (!breeze && !stench) {
             for (int i=0; i<4; i++) {
                 int nx = x + dx[i];
@@ -133,6 +170,8 @@ struct Agent {
             }
         }
 
+        // Rule: Breeze detected → at least one adjacent unvisited cell has a pit.
+        // Assign equal probability to all candidate cells.
         if (breeze) {
             int count = 0;
             int candx[4], candy[4];
@@ -154,6 +193,8 @@ struct Agent {
             }
         }
 
+        // Rule: Stench detected → at least one adjacent unvisited cell has the Wumpus.
+        // Assign equal probability to all candidate cells.
         if (stench) {
             int count = 0;
             int candx[4], candy[4];
@@ -175,6 +216,8 @@ struct Agent {
             }
         }
         
+        // Rule: Glow detected → at least one adjacent unvisited cell has paradise.
+        // Assign equal probability to all candidate cells.
         if (glow) {
             int count = 0;
             int candx[4], candy[4];
@@ -200,6 +243,11 @@ struct Agent {
     //FUNCTION WORKS BY FINDING ALL SAFE UNVISITED ADJACENT CELLS, IF NONE EXIST THEN IT WILL TRY TO GO TO A
     //UNSAFE ADJACENT TILE, LASTLY IS NOTHING ELSE EXISTS IT WILL RETRACE ITS STEPS TO A VISITED TILE. IT WILL THEN
     //RANDOMLY SELECT A DIRECTION AFTER IT DETERMINES WHETHER SOME SQUARES ARE WORTH GOING TO OR NOT.
+    // Strategy priority:
+    // 1. Prefer unvisited SAFE cells (logically confirmed hazard-free).
+    // 2. If none, choose among UNKNOWN cells with lowest combined pit+Wumpus probability.
+    // 3. If none, backtrack to a VISITED cell.
+    // This ensures the agent explores safely when possible and avoids high-risk moves.
     void chooseNextMove(int &nx, int &ny) {
         int dx[4] = {1,-1,0,0};
         int dy[4] = {0,0,1,-1};
@@ -260,6 +308,8 @@ struct Agent {
     }
     
     //CALLS ON CHOOSE NEXT MOVE AND RETURNS IF THE GAME HAS ENDED IF THE CELL THE PLAYER IS ON IS ALSO A SPECIAL CELL
+    // Executes one move: selects next cell, checks for termination conditions (pit, Wumpus, paradise),
+    // and updates the knowledge base with new percepts.
     bool makeMove() {
         int nx, ny;
         bool end = false;
@@ -292,15 +342,21 @@ struct Agent {
         return end;
     }
 
+    // Runs the agent for up to 'steps' moves (default: 10), stopping early if it dies or wins.
     void run(int steps=10) {
         int i = 0;
         bool finish = false;
         while(i < steps && !finish){
             finish = makeMove();
         }
+        cout << "\nExploration complete. Ready for queries.\n";
     }
     
     //RETURNS STRING OF INFO ABOUT A REQUESTED CELL, THIS IS CALLED AT THE END OF THE GAME.
+     // Supports Angelina's query requirement: for any (x,y), report:
+    // - SAFE / UNKNOWN / UNSAFE
+    // - Presence of breeze, stench, glow
+    // (Note: probabilities are stored internally but not printed in query output per current spec)
     string query(int qx, int qy) {
         Cell &c = knowledge[qx][qy];
         string ret = "";
